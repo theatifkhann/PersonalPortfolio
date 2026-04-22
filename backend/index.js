@@ -46,6 +46,19 @@ const upload = multer({
   },
 })
 
+const corsOptions = {
+  origin(origin, callback) {
+    const allowedOrigins = getAllowedOrigins()
+
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true)
+      return
+    }
+
+    callback(new Error(`Origin ${origin} is not allowed by CORS.`))
+  },
+}
+
 function getAllowedOrigins() {
   const origins = process.env.CORS_ORIGIN?.split(',').map((value) => value.trim()).filter(Boolean)
   return origins ?? []
@@ -105,35 +118,25 @@ function isMissingObjectError(error) {
   )
 }
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      const allowedOrigins = getAllowedOrigins()
-
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        callback(null, true)
-        return
-      }
-
-      callback(new Error(`Origin ${origin} is not allowed by CORS.`))
-    },
-  }),
-)
+app.use(cors(corsOptions))
+app.options(/.*/, cors(corsOptions))
 
 app.use(express.json())
 
-app.get('/api/health', (_request, response) => {
+const router = express.Router()
+
+router.get('/health', (_request, response) => {
   response.json({ ok: true })
 })
 
-app.get('/api/resume/auth-check', requireAdminToken, (_request, response) => {
+router.get('/resume/auth-check', requireAdminToken, (_request, response) => {
   response.json({
     authenticated: true,
     message: 'Secret key accepted.',
   })
 })
 
-app.get('/api/resume', async (_request, response) => {
+router.get('/resume', async (_request, response) => {
   if (!isStorageConfigured || !s3Client) {
     response.json({
       configured: false,
@@ -180,50 +183,58 @@ app.get('/api/resume', async (_request, response) => {
   }
 })
 
-app.post('/api/resume/upload', requireAdminToken, upload.single('resume'), async (request, response) => {
-  if (!isStorageConfigured || !s3Client) {
-    response.status(500).json({
-      error: 'StorageNotConfigured',
-      message: 'Set the required S3 environment variables before uploading.',
-      missingEnv: missingStorageEnv,
-    })
-    return
-  }
+router.post(
+  '/resume/upload',
+  requireAdminToken,
+  upload.single('resume'),
+  async (request, response) => {
+    if (!isStorageConfigured || !s3Client) {
+      response.status(500).json({
+        error: 'StorageNotConfigured',
+        message: 'Set the required S3 environment variables before uploading.',
+        missingEnv: missingStorageEnv,
+      })
+      return
+    }
 
-  if (!request.file) {
-    response.status(400).json({
-      error: 'MissingFile',
-      message: 'Attach a PDF file in the `resume` field.',
-    })
-    return
-  }
+    if (!request.file) {
+      response.status(400).json({
+        error: 'MissingFile',
+        message: 'Attach a PDF file in the `resume` field.',
+      })
+      return
+    }
 
-  try {
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: resumeObjectKey,
-        Body: request.file.buffer,
-        ContentType: 'application/pdf',
-        CacheControl: 'no-store, max-age=0',
-      }),
-    )
+    try {
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: resumeObjectKey,
+          Body: request.file.buffer,
+          ContentType: 'application/pdf',
+          CacheControl: 'no-store, max-age=0',
+        }),
+      )
 
-    response.status(201).json({
-      message: 'Resume uploaded successfully.',
-      resumeUrl: getResumeUrl(),
-      objectKey: resumeObjectKey,
-      uploadedAt: new Date().toISOString(),
-      size: request.file.size,
-    })
-  } catch (error) {
-    console.error('Failed to upload resume:', error)
-    response.status(502).json({
-      error: 'ResumeUploadFailed',
-      message: 'The upload reached the server, but storage rejected it.',
-    })
-  }
-})
+      response.status(201).json({
+        message: 'Resume uploaded successfully.',
+        resumeUrl: getResumeUrl(),
+        objectKey: resumeObjectKey,
+        uploadedAt: new Date().toISOString(),
+        size: request.file.size,
+      })
+    } catch (error) {
+      console.error('Failed to upload resume:', error)
+      response.status(502).json({
+        error: 'ResumeUploadFailed',
+        message: 'The upload reached the server, but storage rejected it.',
+      })
+    }
+  },
+)
+
+app.use('/api', router)
+app.use(router)
 
 app.use((error, _request, response, _next) => {
   if (error instanceof multer.MulterError) {
