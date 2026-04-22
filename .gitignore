@@ -1,0 +1,15 @@
+.DS_Store
+
+# Root-level local files
+.env
+.env.local
+
+# Backend
+backend/node_modules
+backend/.env
+
+# Frontend
+portfolio/node_modules
+portfolio/dist
+portfolio/.env
+
