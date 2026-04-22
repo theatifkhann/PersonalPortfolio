@@ -55,11 +55,11 @@ function Footer({ onOpenResumeSettings }) {
     setStatus(null)
 
     try {
-      const response = await fetch(buildResumeApiUrl('/api/resume/auth-check'), {
-        headers: {
-          'x-admin-secret': secretKey.trim(),
-        },
+      const query = new URLSearchParams({
+        action: 'auth-check',
+        secretKey: secretKey.trim(),
       })
+      const response = await fetch(buildResumeApiUrl(`/api/resume?${query.toString()}`))
       const data = await response.json()
 
       if (!response.ok) {

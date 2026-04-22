@@ -89,11 +89,15 @@ function isAuthorized(request) {
     : ''
   const secretHeader = request.get('x-admin-secret')?.trim() || ''
   const headerToken = request.get('x-admin-token')?.trim() || ''
+  const querySecret = typeof request.query?.secretKey === 'string' ? request.query.secretKey.trim() : ''
+  const bodySecret = typeof request.body?.secretKey === 'string' ? request.body.secretKey.trim() : ''
 
   return (
     bearerToken === expectedSecretKey ||
     secretHeader === expectedSecretKey ||
-    headerToken === expectedSecretKey
+    headerToken === expectedSecretKey ||
+    querySecret === expectedSecretKey ||
+    bodySecret === expectedSecretKey
   )
 }
 
@@ -129,14 +133,23 @@ router.get('/health', (_request, response) => {
   response.json({ ok: true })
 })
 
-router.get('/resume/auth-check', requireAdminToken, (_request, response) => {
-  response.json({
-    authenticated: true,
-    message: 'Secret key accepted.',
-  })
-})
-
 router.get('/resume', async (_request, response) => {
+  if (_request.query?.action === 'auth-check') {
+    if (!isAuthorized(_request)) {
+      response.status(401).json({
+        error: 'Unauthorized',
+        message: 'Provide a valid secret key to upload a new resume.',
+      })
+      return
+    }
+
+    response.json({
+      authenticated: true,
+      message: 'Secret key accepted.',
+    })
+    return
+  }
+
   if (!isStorageConfigured || !s3Client) {
     response.json({
       configured: false,
@@ -184,10 +197,17 @@ router.get('/resume', async (_request, response) => {
 })
 
 router.post(
-  '/resume/upload',
-  requireAdminToken,
+  '/resume',
   upload.single('resume'),
   async (request, response) => {
+    if (!isAuthorized(request)) {
+      response.status(401).json({
+        error: 'Unauthorized',
+        message: 'Provide a valid secret key to upload a new resume.',
+      })
+      return
+    }
+
     if (!isStorageConfigured || !s3Client) {
       response.status(500).json({
         error: 'StorageNotConfigured',

@@ -105,11 +105,11 @@ function AdminResumePage({ initialSecretKey = '' }) {
       }
 
       try {
-        const response = await fetch(buildResumeApiUrl('/api/resume/auth-check'), {
-          headers: {
-            'x-admin-secret': secretKey.trim(),
-          },
+        const query = new URLSearchParams({
+          action: 'auth-check',
+          secretKey: secretKey.trim(),
         })
+        const response = await fetch(buildResumeApiUrl(`/api/resume?${query.toString()}`))
 
         if (!response.ok) {
           return
@@ -142,11 +142,11 @@ function AdminResumePage({ initialSecretKey = '' }) {
     setStatus(null)
 
     try {
-      const response = await fetch(buildResumeApiUrl('/api/resume/auth-check'), {
-        headers: {
-          'x-admin-secret': secretKey.trim(),
-        },
+      const query = new URLSearchParams({
+        action: 'auth-check',
+        secretKey: secretKey.trim(),
       })
+      const response = await fetch(buildResumeApiUrl(`/api/resume?${query.toString()}`))
       const data = await response.json()
 
       if (!response.ok) {
@@ -194,16 +194,14 @@ function AdminResumePage({ initialSecretKey = '' }) {
 
     const formData = new FormData()
     formData.append('resume', selectedFile)
+    formData.append('secretKey', activeSecretKey)
 
     setIsUploading(true)
     setStatus(null)
 
     try {
-      const response = await fetch(buildResumeApiUrl('/api/resume/upload'), {
+      const response = await fetch(buildResumeApiUrl('/api/resume'), {
         method: 'POST',
-        headers: {
-          'x-admin-secret': activeSecretKey,
-        },
         body: formData,
       })
 
