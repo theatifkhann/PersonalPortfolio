@@ -3,6 +3,7 @@ import dotenv from 'dotenv'
 import express from 'express'
 import multer from 'multer'
 import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { fileURLToPath } from 'url'
 
 dotenv.config()
 
@@ -252,7 +253,10 @@ app.use((error, _request, response, _next) => {
 
 export default app
 
-if (process.env.VERCEL !== '1') {
+const entryFilePath = process.argv[1] ? fileURLToPath(new URL(`file://${process.argv[1]}`)) : null
+const currentFilePath = fileURLToPath(import.meta.url)
+
+if (entryFilePath === currentFilePath) {
   app.listen(port, () => {
     console.log(`Resume API listening on http://localhost:${port}`)
   })
