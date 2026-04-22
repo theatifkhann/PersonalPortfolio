@@ -77,66 +77,69 @@ http://localhost:5173?admin=resume
 
 ### Deployment shape
 
-- Frontend: deploy the Vite app as usual.
-- Backend: deploy the separate `backend` app on any Node host such as Render, Railway, Fly.io, or your VPS.
-- Frontend env: set `VITE_RESUME_API_BASE_URL` to the deployed backend origin.
-- Backend env: set `CORS_ORIGIN` to your live frontend origin and the S3 credentials for your bucket.
+- Frontend: deploy `portfolio/` to Vercel
+- Backend: deploy `backend/` to Vercel as a separate project from the same repo
+- Frontend env: set `VITE_RESUME_API_BASE_URL` to the deployed backend origin
+- Backend env: set `CORS_ORIGIN` to your live frontend origin and the R2 credentials for your bucket
 
-## Render + Vercel Deployment
+## Vercel Monorepo Deployment
 
-This repo now includes a Render blueprint for the backend at [render.yaml](/Users/atif/Desktop/PortfolioWeb/render.yaml:1), and the backend source now lives in [backend](/Users/atif/Desktop/PortfolioWeb/backend).
-
-### Backend on Render
-
-1. Push this repo to GitHub.
-2. In Render, create a new Blueprint instance from the repo.
-3. Render will detect `render.yaml` and create the `portfolio-resume-api` service from the `backend` folder.
-4. Before going live, replace these placeholder env values in Render:
-   - `CORS_ORIGIN`
-   - `S3_REGION`
-   - `S3_ENDPOINT` if your provider needs a custom endpoint
-   - `S3_BUCKET_NAME`
-   - `S3_ACCESS_KEY_ID`
-   - `S3_SECRET_ACCESS_KEY`
-   - `S3_PUBLIC_URL_BASE`
-5. Keep the generated `ADMIN_SECRET_KEY` safe. You will use it in the upload screen.
-6. After deploy, note the backend URL, for example:
-
-```text
-https://portfolio-resume-api.onrender.com
-```
+Deploy this repo to Vercel as two projects connected to the same GitHub repository.
 
 ### Frontend on Vercel
 
-1. Import the `portfolio` folder into Vercel as the frontend project.
-2. Set the framework to Vite if Vercel does not detect it automatically.
-3. Set the root directory to:
+1. Import the repo into Vercel.
+2. Set the root directory to:
 
 ```text
 portfolio
 ```
 
-4. Add this environment variable in Vercel:
+3. Framework preset: `Vite`
+4. Add:
 
 ```text
-VITE_RESUME_API_BASE_URL=https://your-render-service.onrender.com
+VITE_RESUME_API_BASE_URL=https://your-backend-project.vercel.app
 ```
 
 There is also a sample file at [\.env.vercel.example](/Users/atif/Desktop/PortfolioWeb/portfolio/.env.vercel.example:1).
 
-5. Redeploy the Vercel app after saving the env variable.
+### Backend on Vercel
+
+1. Import the same repo again into Vercel.
+2. Set the root directory to:
+
+```text
+backend
+```
+
+3. Add these environment variables:
+   - `ADMIN_SECRET_KEY`
+   - `CORS_ORIGIN`
+   - `MAX_UPLOAD_SIZE_MB`
+   - `S3_REGION`
+   - `S3_ENDPOINT`
+   - `S3_BUCKET_NAME`
+   - `S3_ACCESS_KEY_ID`
+   - `S3_SECRET_ACCESS_KEY`
+   - `S3_PUBLIC_URL_BASE`
+   - `S3_FORCE_PATH_STYLE`
+   - `RESUME_OBJECT_KEY`
+
+4. Vercel will detect the Express backend from [backend/index.js](/Users/atif/Desktop/PortfolioWeb/backend/index.js:1).
 
 ### Final wiring
 
-After both deployments are live:
+After both projects are live:
 
-1. Update `CORS_ORIGIN` in Render to the exact Vercel frontend origin.
-2. Open your live frontend with:
+1. Set `VITE_RESUME_API_BASE_URL` to the backend Vercel URL.
+2. Set `CORS_ORIGIN` to the frontend Vercel URL.
+3. Open:
 
 ```text
-https://your-portfolio-domain.vercel.app?admin=resume
+https://your-frontend-project.vercel.app?admin=resume
 ```
 
-3. Enter the `ADMIN_SECRET_KEY` from Render.
-4. Upload a PDF.
-5. The main `Resume` button will now open the newly uploaded live file.
+4. Enter the `ADMIN_SECRET_KEY`.
+5. Upload a PDF.
+6. The main `Resume` button will open the latest uploaded file.

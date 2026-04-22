@@ -250,6 +250,10 @@ app.use((error, _request, response, _next) => {
   })
 })
 
-app.listen(port, () => {
-  console.log(`Resume API listening on http://localhost:${port}`)
-})
+export default app
+
+if (process.env.VERCEL !== '1') {
+  app.listen(port, () => {
+    console.log(`Resume API listening on http://localhost:${port}`)
+  })
+}
